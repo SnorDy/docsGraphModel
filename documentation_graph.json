@@ -1,0 +1,95 @@
+{
+  "name": "Documentation Knowledge Graph",
+  "statistics": {
+    "total_nodes": 3,
+    "questions": 1,
+    "answers": 2,
+    "total_edges": 2,
+    "edge_types": {
+      "has_answer": 2
+    },
+    "root_nodes": 1,
+    "depth_distribution": {
+      "0": 1,
+      "1": 2
+    },
+    "avg_children_per_node": 0.6666666666666666,
+    "compression_ratio": "5112/9234 (44.6% saved)"
+  },
+  "nodes": {
+    "q_8547778": {
+      "node_id": "q_8547778",
+      "node_type": "question",
+      "body_preview": "eJytVttu20YQfddXDGwgsCFFlGKncGNZBeIEqR9cFLDblyAwluRI3Gi5y+5FlxT5987sknZsuZZQlA8UNXuZc2bOzuykmd6EpjEOYVKYEqdiPMnix6A15E8NxYNB6LI1lp0RGiO1B2+gQtFAjbWxmzSz3oAONVpZCAU8GSrhwFcIM6OUWUk9J7NFUMY0w0nWTHuTxuK0...",
+      "body_length": 1508,
+      "body_compressed": true,
+      "key_fragments": [],
+      "url": "https://stackoverflow.com/questions/8547778/why-are-elementwise-additions-much-faster-in-separate-loops-than-in-a-combined-l",
+      "score": 2454,
+      "depth": 0,
+      "parent_id": null,
+      "parent_type": null,
+      "title": "Why are elementwise additions much faster in separate loops than in a combined loop?",
+      "tags": [
+        "c++",
+        "performance",
+        "x86",
+        "vectorization",
+        "compiler-optimization"
+      ],
+      "created_date": 1324154452,
+      "extraction_source": "Architectures"
+    },
+    "a_8547993": {
+      "node_id": "a_8547993",
+      "node_type": "answer",
+      "body_preview": "eJylV39v2zYT/t+f4tBii9Mklu0kbdK4xpIsXYMVS7F2wN4NQ0FLlKWGJjWSiusN/e57jpQcu3G6vJ3RBqR4v+94fG5UjX+pjKa8tr6QloQWauFKRyYnX5Ruly5pIlUpb2TYE/51hSclhfNUCetLodRim1JRO5nRZAEySZnwgoQqp3omtY/CJOWmtnuVKbWX1vXoHcub...",
+      "body_length": 2184,
+      "body_compressed": true,
+      "key_fragments": [
+        "</strong>\nUsually when such large allocations are requested, the allocator will request fresh pages from the OS",
+        "Therefore, there is a high chance that large allocations will appear at the same offset from a page-boundary",
+        "2 GHz:</strong></p>\n<pre class=\"lang-none prettyprint-override\"><code>#define ALLOCATE_SEPERATE\n#define ONE_LOOP\n00600020\n006D0020\n007A0020\n00870020\nseconds = 6"
+      ],
+      "url": "",
+      "score": 1797,
+      "depth": 1,
+      "parent_id": "q_8547778",
+      "parent_type": "question",
+      "is_accepted": true
+    },
+    "a_8549223": {
+      "node_id": "a_8549223",
+      "node_type": "answer",
+      "body_preview": "eJyVVsGO2zYQve9XTH3o2oDXdntqt14jaZoAaZrsAmkvvVHUyGJDkSpJWet+fd9QtNcbtEAC+CCJ5Mx7b94Mve139++WlFqmYPZtIuXiyIFqbowzie2RWhUpeao9Rd9xao3b02hSmw+9eviDtNItr+jnIcm+IXJeyV9Jhf3QsUt4dVQx/T0gKNWmaYwebFoSx561URaJ...",
+      "body_length": 1420,
+      "body_compressed": true,
+      "key_fragments": [
+        "But to use the cache argument can be quite difficult, especially without data",
+        "</p>\n\n<p>That's why I combined his test (using a continuous vs",
+        ")</p></li>\n</ol>\n\n<p>The result using initialized data:</p>\n\n<p><img src=\"https://i"
+      ],
+      "url": "",
+      "score": 235,
+      "depth": 1,
+      "parent_id": "q_8547778",
+      "parent_type": "question",
+      "is_accepted": false
+    }
+  },
+  "edges": [
+    {
+      "from": "q_8547778",
+      "to": "a_8547993",
+      "type": "has_answer"
+    },
+    {
+      "from": "q_8547778",
+      "to": "a_8549223",
+      "type": "has_answer"
+    }
+  ],
+  "root_nodes": [
+    "q_8547778"
+  ]
+}

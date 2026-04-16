@@ -154,7 +154,7 @@ class Graph:
 
     def add_edge(self, from_id: str, to_id: str, edge_type: str) -> bool:
         if from_id not in self.nodes or to_id not in self.nodes:
-            print(f"Не удалось добавить ребро {from_id} -> {to_id}: узлы не существуют")
+            print(f"Failed to add edge {from_id} -> {to_id}: nodes do not exist")
             return False
 
         edge = Edge(from_id, to_id, edge_type)
@@ -257,10 +257,10 @@ class Graph:
         connector = "└── " if is_last else "├── "
 
         if node.is_question():
-            print(f"{prefix}{connector} ВОПРОС: {node.title[:60]}... (score: {node.score}, глубина: {node.depth})")
+            print(f"{prefix}{connector} QUESTION: {node.title[:60]}... (score: {node.score}, depth: {node.depth})")
         else:
             print(
-                f"{prefix}{connector}ОТВЕТ: (score: {node.score}, принят: {node.is_accepted}, глубина: {node.depth})")
+                f"{prefix}{connector}ANSWER: (score: {node.score}, accepted: {node.is_accepted}, depth: {node.depth})")
 
         new_prefix = prefix + ("    " if is_last else "│   ")
         children = self.get_children(node_id)
@@ -269,7 +269,7 @@ class Graph:
             self.print_tree(child.node_id, max_depth - 1, new_prefix, is_last_child)
 
         if len(children) > 5:
-            print(f"{new_prefix}└── ... и ещё {len(children) - 5} узлов")
+            print(f"{new_prefix}└── ... and {len(children) - 5} more nodes")
 
     def export_to_json(self, filepath: str, include_full_body: bool = False) -> None:
         export_data = {
@@ -289,4 +289,4 @@ class Graph:
         with open(filepath, 'w', encoding='utf-8') as f:
             json.dump(export_data, f, ensure_ascii=False, indent=2)
 
-        print(f"Граф экспортирован в {filepath}")
+        print(f"Graph exported to {filepath}")

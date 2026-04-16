@@ -17,6 +17,9 @@ class StackOverflowClient:
 
         self.project_functions: Dict[str, Set[str]] = {}  # project -> set of functions
 
+        self.file_extensions = {'.png', '.jpg', '.jpeg', '.gif', '.html', '.htm', '.css', '.js', '.json', '.xml',
+                                '.txt', '.md', '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.zip',
+                                '.tar', '.gz', '.svg', '.ico', '.woff', '.ttf', '.eot'}
 
         self.common_functions: Set[str] = {
             'print', 'len', 'str', 'int', 'float', 'list', 'dict', 'set', 'tuple',
@@ -38,7 +41,7 @@ class StackOverflowClient:
             if len(clean_func) > 2:
                 self.project_functions[project].add(clean_func)
 
-        print(f"Загружено {len(self.project_functions[project])} функций для проекта {project}")
+        print(f"Loaded {len(self.project_functions[project])} functions for project {project}")
 
     def _extract_functions_from_text(self, text: str, project: Optional[str] = None,
                                      original_function: Optional[str] = None) -> List[str]:
@@ -93,6 +96,8 @@ class StackOverflowClient:
             return False
 
         if function_name.lower() in self.common_functions:
+            return False
+        if any(function_name.lower().endswith(ext) for ext in self.file_extensions):
             return False
         if project and project in self.project_functions and self.project_functions[project]:
             if function_name in self.project_functions[project]:
@@ -163,10 +168,10 @@ class StackOverflowClient:
             if response.status_code == 200:
                 return response.json()
             else:
-                print(f"Ошибка API: {response.status_code}")
+                print(f"API error: {response.status_code}")
                 return None
         except Exception as e:
-            print(f"Исключение при запросе: {e}")
+            print(f"Request exception: {e}")
             return None
 
     def search_questions(self, search_text: str, project: Optional[str] = None,
@@ -233,25 +238,25 @@ class StackOverflowClient:
 
         func_key = f"{function_name}_{project}"
         if func_key in self.processed_functions:
-            print(f"{'  ' * depth}[Глубина {depth}] Функция {function_name} уже обрабатывалась, пропускаем")
+            print(f"{'  ' * depth}[Depth {depth}] Function {function_name} already processed, skipping")
             return []
         self.processed_functions.add(func_key)
 
         search_text = f"{project} {function_name}"
-        print(f"\n{'  ' * depth}[Глубина {depth}] Ищем: {search_text}")
+        print(f"\n{'  ' * depth}[Depth {depth}] Searching: {search_text}")
 
         questions = self.search_questions(search_text, project=None,
                                           min_answers=1,
                                           pagesize=questions_per_depth)
 
         if not questions:
-            print(f"{'  ' * depth}  Ничего не найдено")
+            print(f"{'  ' * depth}  Nothing found")
             return []
 
         questions.sort(key=lambda x: x.get('score', 0), reverse=True)
         questions = questions[:questions_per_depth]
 
-        print(f"{'  ' * depth}  Найдено вопросов: {len(questions)}")
+        print(f"{'  ' * depth}  Found questions: {len(questions)}")
 
         added_questions = []
 
@@ -260,7 +265,7 @@ class StackOverflowClient:
             question_node_id = f"q_{question_id}"
 
             if question_node_id in graph.nodes:
-                print(f"{'  ' * depth}  Вопрос {idx + 1} уже есть в графе, пропускаем")
+                print(f"{'  ' * depth}  Question {idx + 1} already in graph, skipping")
                 continue
 
             top_answers = self.get_best_answers(question_id,
@@ -268,10 +273,10 @@ class StackOverflowClient:
                                                 min_score=min_answer_score)
 
             if not top_answers:
-                print(f"{'  ' * depth}  Вопрос {idx + 1}: нет хороших ответов, пропускаем")
+                print(f"{'  ' * depth}  Question {idx + 1}: no good answers, skipping")
                 continue
 
-            print(f"{'  ' * depth}  Вопрос {idx + 1}: '{question['title'][:50]}...' (рейтинг: {question['score']})")
+            print(f"{'  ' * depth}  Question {idx + 1}: '{question['title'][:50]}...' (score: {question['score']})")
 
             question_node = Node(
                 node_id=question_node_id,
@@ -312,13 +317,13 @@ class StackOverflowClient:
                     depth=depth + 1
                 )
 
-                answer_body = answer.get('body', '')[:4000]  # Ответы могут быть длиннее
+                answer_body = answer.get('body', '')[:4000]
                 answer_node.set_body(answer_body, compress=self.compress_bodies)
                 answer_node.key_fragments = self._extract_key_fragments(answer_body)
 
                 graph.add_node(answer_node)
                 graph.add_edge(question_node_id, answer_node_id, 'has_answer')
-                print(f"{'  ' * depth}    Ответ {ans_idx + 1}: рейтинг {answer.get('score', 0)}")
+                print(f"{'  ' * depth}    Answer {ans_idx + 1}: score {answer.get('score', 0)}")
 
                 extracted_functions = self._extract_functions_from_text(
                     answer_body,
@@ -328,7 +333,7 @@ class StackOverflowClient:
 
                 for extracted_function in extracted_functions[:2]:
                     if extracted_function and extracted_function != function_name:
-                        print(f"{'  ' * depth} Найдена функция в ответе: {extracted_function}")
+                        print(f"{'  ' * depth} Found function in answer: {extracted_function}")
 
                         self.build_graph_from_function(
                             extracted_function, project, graph,
