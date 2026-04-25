@@ -14,7 +14,11 @@
       "1": 2
     },
     "avg_children_per_node": 0.6666666666666666,
-    "compression_ratio": "5112/9234 (44.6% saved)"
+    "compression_ratio": "5112/9234 (44.6% saved)",
+    "total_code_snippets": 6,
+    "snippets_by_language": {
+      "unknown": 6
+    }
   },
   "nodes": {
     "q_8547778": {
@@ -24,6 +28,37 @@
       "body_length": 1508,
       "body_compressed": true,
       "key_fragments": [],
+      "code_snippets": [
+        {
+          "language": "unknown",
+          "code": "const int n = 100000;\n\nfor (int j = 0; j < n; j++) {\n    a1[j] += b1[j];\n    c1[j] += d1[j];\n}",
+          "source": "question",
+          "node_id": "q_8547778",
+          "snippet_index": 0
+        },
+        {
+          "language": "unknown",
+          "code": "for (int j = 0; j < n; j++) {\n    a1[j] += b1[j];\n}\n\nfor (int j = 0; j < n; j++) {\n    c1[j] += d1[j];\n}",
+          "source": "question",
+          "node_id": "q_8547778",
+          "snippet_index": 1
+        },
+        {
+          "language": "unknown",
+          "code": "movsd       xmm0,mmword ptr [edx+18h]\naddsd       xmm0,mmword ptr [ecx+20h]\nmovsd       mmword ptr [ecx+20h],xmm0\nmovsd       xmm0,mmword ptr [esi+10h]\naddsd       xmm0,mmword ptr [eax+30h]\nmovsd       mmword ptr [eax+30h],xmm0\nmovsd       xmm0,mmword ptr [edx+20h]\naddsd       xmm0,mmword ptr [ecx+28h]\nmovsd       mmword ptr [ecx+28h],xmm0\nmovsd       xmm0,mmword ptr [esi+18h]\naddsd       xmm0,mmword ptr [eax+38h]",
+          "source": "question",
+          "node_id": "q_8547778",
+          "snippet_index": 2
+        },
+        {
+          "language": "unknown",
+          "code": "addsd       xmm0,mmword ptr [eax+28h]\nmovsd       mmword ptr [eax+28h],xmm0\nmovsd       xmm0,mmword ptr [ecx+20h]\naddsd       xmm0,mmword ptr [eax+30h]\nmovsd       mmword ptr [eax+30h],xmm0\nmovsd       xmm0,mmword ptr [ecx+28h]\naddsd       xmm0,mmword ptr [eax+38h]\nmovsd       mmword ptr [eax+38h],xmm0\nmovsd       xmm0,mmword ptr [ecx+30h]\naddsd       xmm0,mmword ptr [eax+40h]\nmovsd       mmword ptr [eax+40h],xmm0",
+          "source": "question",
+          "node_id": "q_8547778",
+          "snippet_index": 3
+        }
+      ],
+      "code_snippets_count": 4,
       "url": "https://stackoverflow.com/questions/8547778/why-are-elementwise-additions-much-faster-in-separate-loops-than-in-a-combined-l",
       "score": 2454,
       "depth": 0,
@@ -51,6 +86,23 @@
         "Therefore, there is a high chance that large allocations will appear at the same offset from a page-boundary",
         "2 GHz:</strong></p>\n<pre class=\"lang-none prettyprint-override\"><code>#define ALLOCATE_SEPERATE\n#define ONE_LOOP\n00600020\n006D0020\n007A0020\n00870020\nseconds = 6"
       ],
+      "code_snippets": [
+        {
+          "language": "unknown",
+          "code": "int main(){\n    const int n = 100000;\n\n#ifdef ALLOCATE_SEPERATE\n    double *a1 = (double*)malloc(n * sizeof(double));\n    double *b1 = (double*)malloc(n * sizeof(double));\n    double *c1 = (double*)malloc(n * sizeof(double));\n    double *d1 = (double*)malloc(n * sizeof(double));\n#else\n    double *a1 = (double*)malloc(n * sizeof(double) * 4);\n    double *b1 = a1 + n;\n    double *c1 = b1 + n;\n    double *d1 = c1 + n;\n#endif\n\n    //  Zero the data to prevent any chance of denormals.\n    memset(a1,0,n * sizeof(double));\n    memset(b1,0,n * sizeof(double));\n    memset(c1,0,n * sizeof(double));\n    memset(d1,0,n * sizeof(double));\n\n    //  Print the addresses\n    cout << a1 << endl;\n    cout << b1 << endl;\n    cout << c1 << endl;\n    cout << d1 << endl;\n\n    clock_t start = clock();\n\n    int c = 0;\n    while (c++ < 10000){\n\n#if ONE_LOOP\n        for(int j=0;j<n;j++){\n            a1[j] += b1[j];\n            c1[j] += d1[j];\n        }\n#else\n        for(int j=0;j<n;j++){\n            a1[j] += b1[j];\n        }\n        for(int j=0;j<n;j++){\n            c1[j] += d1[j];\n        }\n#endif\n\n    }\n\n    clock_t end = clock();\n    cout << \"seconds = \" << (double)(end - start) / CLOCKS_PER_SEC << endl;\n\n    system(\"pause\");\n    return 0;\n}",
+          "source": "answer",
+          "node_id": "a_8547993",
+          "snippet_index": 0
+        },
+        {
+          "language": "unknown",
+          "code": "#define ALLOCATE_SEPERATE\n#define ONE_LOOP\n00600020\n006D0020\n007A0020\n00870020\nseconds = 6.206\n\n#define ALLOCATE_SEPERATE\n//#define ONE_LOOP\n005E0020\n006B0020\n00780020\n00850020\nseconds = 2.116\n\n//#define ALLOCATE_SEPERATE\n#define ONE_LOOP\n00570020\n00633520\n006F6A20\n007B9F20\nseconds = 1.894\n\n//#define ALLOCATE_SEPERATE\n//#define ONE_LOOP\n008C0020\n00983520\n00A46A20\n00B09F20\nseconds = 1.993",
+          "source": "answer",
+          "node_id": "a_8547993",
+          "snippet_index": 1
+        }
+      ],
+      "code_snippets_count": 2,
       "url": "",
       "score": 1797,
       "depth": 1,
@@ -69,6 +121,8 @@
         "</p>\n\n<p>That's why I combined his test (using a continuous vs",
         ")</p></li>\n</ol>\n\n<p>The result using initialized data:</p>\n\n<p><img src=\"https://i"
       ],
+      "code_snippets": [],
+      "code_snippets_count": 0,
       "url": "",
       "score": 235,
       "depth": 1,

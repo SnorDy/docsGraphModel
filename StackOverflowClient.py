@@ -1,8 +1,9 @@
+import html
 import re
 import requests
 import time
 from typing import Optional, Dict, List, Set
-from Graph import Graph, Node, NodeType
+from Graph import Graph, Node, NodeType, CodeSnippet
 
 
 class StackOverflowClient:
@@ -30,6 +31,90 @@ class StackOverflowClient:
             'split', 'strip', 'replace', 'format', 'upper', 'lower', 'startswith',
             'endswith', 'find', 'isalpha', 'isdigit', 'isalnum'
         }
+
+        # Maps lowercase HTML/markdown language hints to canonical names
+        self._LANG_ALIASES: Dict[str, str] = {
+            'py': 'python', 'python3': 'python', 'python2': 'python',
+            'js': 'javascript', 'ts': 'typescript',
+            'sh': 'bash', 'shell': 'bash', 'zsh': 'bash',
+            'rb': 'ruby',
+            'cs': 'csharp', 'c#': 'csharp',
+            'c++': 'cpp', 'cc': 'cpp',
+            'yml': 'yaml',
+        }
+
+    def _normalize_language(self, raw: str) -> str:
+        cleaned = raw.strip().lower().lstrip('language-')
+        return self._LANG_ALIASES.get(cleaned, cleaned) if cleaned else 'unknown'
+
+    def _extract_code_snippets(self, text: str, node_id: str,
+                                node_type: NodeType) -> List[CodeSnippet]:
+        if not text:
+            return []
+
+        snippets: List[CodeSnippet] = []
+        seen_codes: Set[str] = set()
+        source = node_type.value  # "question" or "answer"
+
+        #1. HTML <pre><code …>…</code></pre>
+        html_pattern = re.compile(
+            r'<pre[^>]*>\s*<code([^>]*)>(.*?)</code>\s*</pre>',
+            re.DOTALL | re.IGNORECASE,
+        )
+        for match in html_pattern.finditer(text):
+            attrs, raw_code = match.group(1), match.group(2)
+
+            # detect language from class="language-python" or class="python"
+            lang = 'unknown'
+            class_match = re.search(r'class=["\']([^"\']+)["\']', attrs)
+            if class_match:
+                classes = class_match.group(1).split()
+                for cls in classes:
+                    candidate = self._normalize_language(cls)
+                    if candidate and candidate != 'unknown':
+                        lang = candidate
+                        break
+
+            # unescape basic HTML entities
+            code =  html.unescape(raw_code).strip()
+            if not code or code in seen_codes:
+                continue
+            # skip trivially short snippets (single-word, etc.)
+            if len(code) < 10:
+                continue
+
+            seen_codes.add(code)
+            snippets.append(CodeSnippet(
+                language=lang,
+                code=code,
+                source=source,
+                node_id=node_id,
+                snippet_index=len(snippets),
+            ))
+
+        if not snippets:
+            md_pattern = re.compile(
+                r'```([^\n`]*)\n(.*?)(?:\n```|$)',
+                re.DOTALL,
+            )
+            for match in md_pattern.finditer(text):
+                lang_hint = match.group(1).strip()
+                lang = self._normalize_language(lang_hint) if lang_hint else 'unknown'
+                code = match.group(2).strip()
+
+                if not code or code in seen_codes or len(code) < 10:
+                    continue
+
+                seen_codes.add(code)
+                snippets.append(CodeSnippet(
+                    language=lang,
+                    code=code,
+                    source=source,
+                    node_id=node_id,
+                    snippet_index=len(snippets),
+                ))
+
+        return snippets
 
     def load_project_functions_from_docs(self, project: str, doc_functions: List[str]) -> None:
 
@@ -292,9 +377,14 @@ class StackOverflowClient:
                 extraction_source=function_name
             )
 
-            question_body = question.get('body', '')[:3000]
+            question_body = question.get('body', '')[:5000]
             question_node.set_body(question_body, compress=self.compress_bodies)
             question_node.key_fragments = self._extract_key_fragments(question_body)
+            question_node.code_snippets = self._extract_code_snippets(
+                question_body, question_node_id, NodeType.QUESTION
+            )
+            if question_node.code_snippets:
+                print(f"{'  ' * depth}    → {len(question_node.code_snippets)} code snippet(s) in question")
 
             graph.add_node(question_node)
             added_questions.append(question_node)
@@ -317,13 +407,18 @@ class StackOverflowClient:
                     depth=depth + 1
                 )
 
-                answer_body = answer.get('body', '')[:4000]
+                answer_body = answer.get('body', '')[:8000]
                 answer_node.set_body(answer_body, compress=self.compress_bodies)
                 answer_node.key_fragments = self._extract_key_fragments(answer_body)
+                answer_node.code_snippets = self._extract_code_snippets(
+                    answer_body, answer_node_id, NodeType.ANSWER
+                )
 
                 graph.add_node(answer_node)
                 graph.add_edge(question_node_id, answer_node_id, 'has_answer')
-                print(f"{'  ' * depth}    Answer {ans_idx + 1}: score {answer.get('score', 0)}")
+
+                snippets_info = f", {len(answer_node.code_snippets)} snippet(s)" if answer_node.code_snippets else ""
+                print(f"{'  ' * depth}    Answer {ans_idx + 1}: score {answer.get('score', 0)}{snippets_info}")
 
                 extracted_functions = self._extract_functions_from_text(
                     answer_body,

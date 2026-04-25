@@ -4,6 +4,7 @@ import base64
 from typing import List, Dict, Optional, Set
 from dataclasses import dataclass, field
 from enum import Enum
+import os
 
 
 class NodeType(Enum):
@@ -32,6 +33,25 @@ def decompress_text(compressed_text: str) -> str:
 
 
 @dataclass
+class CodeSnippet:
+    """A single code snippet extracted from a Stack Overflow post."""
+    language: str          # e.g. "python", "javascript", "unknown"
+    code: str              # raw code text
+    source: str            # "question" or "answer"
+    node_id: str           # parent node id
+    snippet_index: int     # position among snippets in this node (0-based)
+
+    def to_dict(self) -> Dict:
+        return {
+            'language': self.language,
+            'code': self.code,
+            'source': self.source,
+            'node_id': self.node_id,
+            'snippet_index': self.snippet_index,
+        }
+
+
+@dataclass
 class Node:
     node_id: str
     node_type: NodeType
@@ -50,6 +70,7 @@ class Node:
     depth: int = 0
     extraction_source: Optional[str] = None
     key_fragments: List[str] = field(default_factory=list)
+    code_snippets: List[CodeSnippet] = field(default_factory=list)
 
     def __hash__(self):
         return hash(self.node_id)
@@ -85,6 +106,8 @@ class Node:
             'body_length': len(self.get_body(decompress=False)),
             'body_compressed': self.body_compressed,
             'key_fragments': self.key_fragments,
+            'code_snippets': [s.to_dict() for s in self.code_snippets],
+            'code_snippets_count': len(self.code_snippets),
             'url': self.url,
             'score': self.score,
             'depth': self.depth,
@@ -215,12 +238,19 @@ class Graph:
         depth_distribution = {}
         total_compressed_size = 0
         total_uncompressed_size = 0
+        total_snippets = 0
+        snippets_by_language: Dict[str, int] = {}
 
         for node in self.nodes.values():
             depth_distribution[node.depth] = depth_distribution.get(node.depth, 0) + 1
             body = node.get_body(decompress=False)
             total_compressed_size += len(body) if node.body_compressed else len(node.body)
             total_uncompressed_size += len(node.get_body(decompress=True))
+
+            total_snippets += len(node.code_snippets)
+            for snippet in node.code_snippets:
+                lang = snippet.language or 'unknown'
+                snippets_by_language[lang] = snippets_by_language.get(lang, 0) + 1
 
         return {
             'total_nodes': len(self.nodes),
@@ -234,7 +264,9 @@ class Graph:
                 sum(len(children) for children in self._children_by_parent.values()) / len(self.nodes)
                 if self.nodes else 0
             ),
-            'compression_ratio': f"{total_compressed_size}/{total_uncompressed_size} ({100 - (total_compressed_size / total_uncompressed_size * 100) if total_uncompressed_size > 0 else 0:.1f}% saved)"
+            'compression_ratio': f"{total_compressed_size}/{total_uncompressed_size} ({100 - (total_compressed_size / total_uncompressed_size * 100) if total_uncompressed_size > 0 else 0:.1f}% saved)",
+            'total_code_snippets': total_snippets,
+            'snippets_by_language': snippets_by_language,
         }
 
     def print_tree(self, node_id: str = None, max_depth: int = 3, prefix: str = "", is_last: bool = True):
@@ -257,10 +289,12 @@ class Graph:
         connector = "└── " if is_last else "├── "
 
         if node.is_question():
-            print(f"{prefix}{connector} QUESTION: {node.title[:60]}... (score: {node.score}, depth: {node.depth})")
+            snippets_info = f", snippets: {len(node.code_snippets)}" if node.code_snippets else ""
+            print(f"{prefix}{connector} QUESTION: {node.title[:60]}... (score: {node.score}, depth: {node.depth}{snippets_info})")
         else:
+            snippets_info = f", snippets: {len(node.code_snippets)}" if node.code_snippets else ""
             print(
-                f"{prefix}{connector}ANSWER: (score: {node.score}, accepted: {node.is_accepted}, depth: {node.depth})")
+                f"{prefix}{connector}ANSWER: (score: {node.score}, accepted: {node.is_accepted}, depth: {node.depth}{snippets_info})")
 
         new_prefix = prefix + ("    " if is_last else "│   ")
         children = self.get_children(node_id)
@@ -290,3 +324,91 @@ class Graph:
             json.dump(export_data, f, ensure_ascii=False, indent=2)
 
         print(f"Graph exported to {filepath}")
+
+    def export_code_snippets(self, output_dir: str = "code_snippets") -> Dict:
+        os.makedirs(output_dir, exist_ok=True)
+        questions_dir = os.path.join(output_dir, "questions")
+        answers_dir = os.path.join(output_dir, "answers")
+        os.makedirs(questions_dir, exist_ok=True)
+        os.makedirs(answers_dir, exist_ok=True)
+
+        index_entries = []
+        files_written = 0
+        total_snippets = 0
+
+        for node_id, node in self.nodes.items():
+            if not node.code_snippets:
+                continue
+
+            node_data: Dict = {
+                'node_id': node_id,
+                'node_type': node.node_type.value,
+                'url': node.url,
+                'score': node.score,
+                'extraction_source': node.extraction_source,
+                'snippets': [
+                    {
+                        'snippet_index': s.snippet_index,
+                        'language': s.language,
+                        'code': s.code,
+                    }
+                    for s in node.code_snippets
+                ],
+            }
+
+            if node.is_question():
+                node_data['title'] = node.title
+                node_data['tags'] = node.tags
+                target_dir = questions_dir
+            else:
+                node_data['is_accepted'] = node.is_accepted
+                # include parent question title for context
+                parent = self.get_parent(node_id)
+                if parent and parent.is_question():
+                    node_data['parent_question_title'] = parent.title
+                    node_data['parent_question_url'] = parent.url
+                target_dir = answers_dir
+
+            file_path = os.path.join(target_dir, f"{node_id}.json")
+            with open(file_path, 'w', encoding='utf-8') as f:
+                json.dump(node_data, f, ensure_ascii=False, indent=2)
+            files_written += 1
+            total_snippets += len(node.code_snippets)
+
+            # add flat entry to index
+            for snippet in node.code_snippets:
+                index_entries.append({
+                    'node_id': node_id,
+                    'node_type': node.node_type.value,
+                    'url': node.url,
+                    'score': node.score,
+                    'extraction_source': node.extraction_source,
+                    'title': node.title if node.is_question() else None,
+                    'language': snippet.language,
+                    'snippet_index': snippet.snippet_index,
+                    'code_preview': snippet.code[:300] + '...' if len(snippet.code) > 300 else snippet.code,
+                    'file': os.path.join(
+                        'questions' if node.is_question() else 'answers',
+                        f"{node_id}.json"
+                    ),
+                })
+
+        index_path = os.path.join(output_dir, "index.json")
+        with open(index_path, 'w', encoding='utf-8') as f:
+            json.dump({
+                'total_snippets': total_snippets,
+                'files_written': files_written,
+                'snippets': index_entries,
+            }, f, ensure_ascii=False, indent=2)
+
+        summary = {
+            'output_dir': output_dir,
+            'files_written': files_written,
+            'total_snippets': total_snippets,
+            'index_path': index_path,
+        }
+        print(
+            f"Code snippets exported: {total_snippets} snippets across "
+            f"{files_written} nodes → {output_dir}/"
+        )
+        return summary
