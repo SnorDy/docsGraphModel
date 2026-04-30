@@ -1,7 +1,8 @@
+from typing import List, Optional, Set
 import re
-from typing import List, Optional
 from Graph import Graph, Node
 from StackOverflowClient import StackOverflowClient
+from JavaFunctionExtractor import JavaFunctionExtractor, TREESITTER_AVAILABLE
 
 
 class DocumentationAnalyzer:
@@ -9,33 +10,86 @@ class DocumentationAnalyzer:
                        '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.zip', '.tar', '.gz', '.svg', '.ico',
                        '.woff', '.ttf', '.eot'}
 
-    def __init__(self, client: StackOverflowClient):
+    # Languages that map to the Java TreeSitter extractor
+    JAVA_LANG_HINTS = {'java'}
+    def __init__(self, client: StackOverflowClient, language: Optional[str] = None):
         self.client = client
+        self.language = language.lower().strip() if language else None
+        self._java_extractor: Optional[JavaFunctionExtractor] = None
+
+        if TREESITTER_AVAILABLE:
+            try:
+                self._java_extractor = JavaFunctionExtractor()
+            except Exception as e:
+                print(f"[TreeSitter] Failed to initialise Java extractor: {e}")
+
 
     def _is_file_extension(self, name: str) -> bool:
         name_lower = name.lower()
         return any(name_lower.endswith(ext) for ext in self.FILE_EXTENSIONS)
 
+    def _get_extractor_for_lang(self, lang_hint: str) -> Optional[JavaFunctionExtractor]:
+        """Return the TreeSitter extractor for a given language hint, or None."""
+        lang = lang_hint.lower().strip()
+        if lang in self.JAVA_LANG_HINTS and self._java_extractor:
+            return self._java_extractor
+        return None
+
+
+    def _extract_functions_treesitter(self, code: str, lang: str) -> List[str]:
+        extractor = self._get_extractor_for_lang(lang)
+        if extractor is None:
+            return []
+        try:
+            return extractor.extract(code)
+        except Exception as e:
+            print(f"[TreeSitter] Parse error ({lang}), falling back to regex: {e}")
+            return []
+
+
+    def _extract_functions_regex(self, text: str) -> Set[str]:
+        functions = set()
+
+        matches = re.findall(r'\b([a-zA-Z_][a-zA-Z0-9_]*\.[a-zA-Z_][a-zA-Z0-9_]*)\s*\(', text)
+        functions.update(matches)
+        matches = re.findall(r'\b([a-zA-Z_][a-zA-Z0-9_]*)\s*\(', text)
+        functions.update(matches)
+        mentions = re.findall(r'\b([a-zA-Z_][a-zA-Z0-9_]*\.[a-zA-Z_][a-zA-Z0-9_]*)\b', text)
+        functions.update(mentions)
+
+        return functions
+
+
     def extract_functions_from_md(self, file_path: str) -> List[str]:
         with open(file_path, 'r', encoding='utf-8') as f:
             content = f.read()
 
-        functions = set()
+        functions: Set[str] = set()
 
-        code_blocks = re.findall(r'```(?:\w+)?\n(.*?)\n```', content, re.DOTALL)
-        for block in code_blocks:
-            matches = re.findall(r'\b([a-zA-Z_][a-zA-Z0-9_]*\.[a-zA-Z_][a-zA-Z0-9_]*)\s*\(', block)
-            functions.update(matches)
-            matches = re.findall(r'\b([a-zA-Z_][a-zA-Z0-9_]*)\s*\(', block)
-            functions.update(matches)
+        # Fenced code blocks
+        # Match ```lang\n code \n``` capturing the language hint and body
+        fenced_pattern = re.compile(r'```(\w*)\n(.*?)\n```', re.DOTALL)
 
-        inline_code = re.findall(r'`([^`]+)`', content)
-        for code in inline_code:
-            matches = re.findall(r'\b([a-zA-Z_][a-zA-Z0-9_]*\.[a-zA-Z_][a-zA-Z0-9_]*)\s*\(', code)
-            functions.update(matches)
-            matches = re.findall(r'\b([a-zA-Z_][a-zA-Z0-9_]*)\s*\(', code)
-            functions.update(matches)
+        for match in fenced_pattern.finditer(content):
+            lang_hint = match.group(1).strip().lower()
+            block_code = match.group(2)
 
+            # Determine effective language
+            effective_lang = self.language or lang_hint
+
+            if effective_lang and self._get_extractor_for_lang(effective_lang):
+                # TreeSitter path
+                extracted = self._extract_functions_treesitter(block_code, effective_lang)
+                functions.update(extracted)
+            else:
+                # Regex fallback for this block
+                functions.update(self._extract_functions_regex(block_code))
+
+        # Inline code  `foo()`
+        for inline in re.findall(r'`([^`]+)`', content):
+            functions.update(self._extract_functions_regex(inline))
+
+        # Plain text mentions  obj.method
         mentions = re.findall(r'\b([a-zA-Z_][a-zA-Z0-9_]*\.[a-zA-Z_][a-zA-Z0-9_]*)\b', content)
         functions.update(mentions)
 
@@ -57,6 +111,8 @@ class DocumentationAnalyzer:
             filtered.append(f)
 
         return sorted(set(filtered))
+
+
 
     def build_graph_from_documentation(self, md_file_path: str, project: str,
                                        graph: Graph,

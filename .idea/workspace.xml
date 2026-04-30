@@ -5,9 +5,9 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="0ececa8d-b8da-40e3-b5e1-a113001a5ee0" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/JavaFunctionExtractor.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Graph.py" beforeDir="false" afterPath="$PROJECT_DIR$/Graph.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/StackOverflowClient.py" beforeDir="false" afterPath="$PROJECT_DIR$/StackOverflowClient.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/DocumentationAnalyzer.py" beforeDir="false" afterPath="$PROJECT_DIR$/DocumentationAnalyzer.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/documentation_graph.json" beforeDir="false" afterPath="$PROJECT_DIR$/documentation_graph.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
     </list>
@@ -40,11 +40,15 @@
     &quot;Python.main.executor&quot;: &quot;Run&quot;,
     &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
     &quot;git-widget-placeholder&quot;: &quot;main&quot;,
-    &quot;last_opened_file_path&quot;: &quot;C:/Users/Snordy/docsGraphModel&quot;
+    &quot;last_opened_file_path&quot;: &quot;C:/Users/Snordy/docsGraphModel/code_snippets&quot;
   }
 }</component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="C:\Users\Snordy\docsGraphModel\code_snippets" />
+      <recent name="C:\Users\Snordy\docsGraphModel" />
+    </key>
+    <key name="MoveFile.RECENT_KEYS">
       <recent name="C:\Users\Snordy\docsGraphModel" />
     </key>
   </component>

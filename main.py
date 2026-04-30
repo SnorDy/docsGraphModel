@@ -8,7 +8,7 @@ def main():
         rate_limit_delay=1.5
     )
     graph = Graph(name="Documentation Knowledge Graph")
-    analyzer = DocumentationAnalyzer(client)
+    analyzer = DocumentationAnalyzer(client, language="java")
     md_file = "combined.md"
     project_name = ""
 
@@ -43,7 +43,6 @@ def main():
             print(f"     URL: {q.url}")
 
         graph.export_to_json("documentation_graph.json")
-
 
         snippets_summary = graph.export_code_snippets("code_snippets")
         print(f"\nSnippets export summary:")
