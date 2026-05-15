@@ -69,6 +69,7 @@ class Node:
     parent_type: Optional[NodeType] = None
     depth: int = 0
     extraction_source: Optional[str] = None
+    extraction_priority: Optional[str] = None   # 'high' | 'low' | None
     key_fragments: List[str] = field(default_factory=list)
     code_snippets: List[CodeSnippet] = field(default_factory=list)
 
@@ -106,6 +107,7 @@ class Node:
             'body_length': len(self.get_body(decompress=False)),
             'body_compressed': self.body_compressed,
             'key_fragments': self.key_fragments,
+            'extraction_priority': self.extraction_priority,
             'code_snippets': [s.to_dict() for s in self.code_snippets],
             'code_snippets_count': len(self.code_snippets),
             'url': self.url,
