@@ -1,7 +1,7 @@
 import asyncio
 from StackOverflowClient import StackOverflowClient
 from Graph import Graph
-from DocumentationAnalyzer import DocumentationAnalyzer
+from ProjectAnalyzer import ProjectAnalyzer
 
 
 async def main():
@@ -10,21 +10,23 @@ async def main():
         rate_limit_delay=1.5,
     )
     graph = Graph(name="Documentation Knowledge Graph")
-    analyzer = DocumentationAnalyzer(client, language="java")
-    md_file = "combined1.md"
+
+    # Path to a local project directory (e.g. a cloned GitHub repo)
+    project_path = r"C:\Users\Snordy\KotlinMKN\kotlin-2025-class7-SnorDy"
     project_name = ""
 
-    try:
-        function_entries = analyzer.extract_functions_from_md(md_file)
+    analyzer = ProjectAnalyzer(client)
 
-        total = len(function_entries)
-        high  = sum(1 for f in function_entries if f['priority'] == 'high')
-        low   = sum(1 for f in function_entries if f['priority'] == 'low')
-        print(f"Extracted functions: {total} (high: {high}, normal: {total-high-low}, low: {low})")
+    try:
+        # Step 1: walk the project, extract + prioritise functions from
+        # every .md and .java file (sync, fast — no network calls here)
+        function_entries = analyzer.extract_functions_from_project(project_path)
+
         max_functions = 10
         function_entries = function_entries[:max_functions]
         print(f"Processing top {max_functions} functions (priority-sorted)\n")
 
+        # Step 2: build graph concurrently
         root_questions = await client.build_graph_from_documentation(
             function_entries=function_entries,
             project=project_name,
@@ -65,7 +67,7 @@ async def main():
 
             graph.print_tree()
         else:
-            print("Failed to build graph for any function from the documentation")
+            print("Failed to build graph for any function from the project")
 
     finally:
         await client.close()
